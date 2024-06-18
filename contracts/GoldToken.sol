@@ -19,7 +19,7 @@ contract GoldToken is
     error ErrorOracleAlreadyAdded();
     error ErrorOracleNotFound();
     error ErrorAmountExceedsMintLimit();
-
+    
     uint256 public mintLimit; // Maximum amount of tokens that can be minted
     uint256[] public pendingMintLimit; // Amount of tokens that can be added to mintLimit after oracles approve
     address[] public oracles; // List of oracle addresses
@@ -123,11 +123,11 @@ contract GoldToken is
         return 6;
     }
 
-    function getOracles() view external returns (address[] memory) {
+    function getOracles() external view returns (address[] memory) {
         return oracles;
     }
 
-    function getPendingMintLimit() view external returns (uint256[] memory) {
+    function getPendingMintLimit() external view returns (uint256[] memory) {
         return pendingMintLimit;
     }
 
