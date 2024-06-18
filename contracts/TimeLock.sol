@@ -13,7 +13,7 @@ contract TimeLock is Ownable {
         address indexed target,
         uint256 value,
         bytes data,
-        uint256 timestamp
+        uint256 executionDate
     );
 
     event ExecuteTransaction(
@@ -21,7 +21,7 @@ contract TimeLock is Ownable {
         address indexed target,
         uint256 value,
         bytes data,
-        uint256 timestamp
+        uint256 executionDate
     );
 
     constructor(address initialOwner) Ownable(initialOwner) {
@@ -50,15 +50,15 @@ contract TimeLock is Ownable {
         address target,
         uint256 value,
         bytes memory data,
-        uint256 timestamp
+        uint256 executionDate
     ) external {
-        bytes32 txnHash = keccak256(abi.encode(target, value, data, timestamp));
+        bytes32 txnHash = keccak256(abi.encode(target, value, data, executionDate));
         require(executionQueue[txnHash], "Transaction not queued");
-        require(block.timestamp >= timestamp, "Time not yet reached");
+        require(block.timestamp >= executionDate, "Time not yet reached");
         executionQueue[txnHash] = false;
         (bool success, ) = target.call{value: value}(data);
         require(success, "Transaction failed");
-        emit ExecuteTransaction(txnHash, target, value, data, timestamp);
+        emit ExecuteTransaction(txnHash, target, value, data, executionDate);
     }
 
     function updateDelay(uint256 newDelay) external onlyOwner {

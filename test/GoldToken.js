@@ -8,15 +8,15 @@ const { ethers, upgrades } = require("hardhat");
 
 describe("GoldToken", function () {
   async function deployGoldTokenFixture() {
-   
+
     const [owner, minter, upgrader, oracle] = await ethers.getSigners();
 
     const GoldToken = await ethers.getContractFactory("GoldToken");
-    const proxy = await upgrades.deployProxy(GoldToken, [owner.address, minter.address, upgrader.address], {kind: 'uups'});
+    const proxy = await upgrades.deployProxy(GoldToken, [owner.address, minter.address, upgrader.address], { kind: 'uups' });
     await proxy.waitForDeployment();
     const goldToken = await ethers.getContractAt("GoldToken", proxy);
 
-    return { goldToken, owner, minter, upgrader, oracle};
+    return { goldToken, owner, minter, upgrader, oracle };
   }
 
   describe("Deployment", function () {
