@@ -6,7 +6,12 @@ const PRIVATE_KEY = vars.get("PRIVATE_KEY");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.26",
+    settings: {
+      viaIR: true,
+    }
+  },
   networks: {
     haqqMainnet: {
       url: `https://rpc.eth.haqq.network`,

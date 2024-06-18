@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.0.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -13,11 +13,19 @@ contract GoldToken is
     AccessControlUpgradeable,
     UUPSUpgradeable
 {
+    error ErrorZeroAddress();
+    error ErrorZeroLimit();
+    error ErrorNotEnoughOracles();
+    error ErrorOracleAlreadyAdded();
+    error ErrorOracleNotFound();
+    error ErrorAmountExceedsMintLimit();
+
     uint256 public mintLimit; // Maximum amount of tokens that can be minted
     uint256[] public pendingMintLimit; // Amount of tokens that can be added to mintLimit after oracles approve
     address[] public oracles; // List of oracle addresses
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    bytes32 public constant UPGRADER_OR_SET_ORACLE_ROLE =
+        keccak256("UPGRADER_OR_SET_ORACLE_ROLE");
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
 
     event MintLimitUpdated(uint256 newLimit);
@@ -40,18 +48,31 @@ contract GoldToken is
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
-        _grantRole(UPGRADER_ROLE, upgrader); // TimeLock smart contract
-    }
-    
-    function setOracle(address newOracles) external onlyRole(UPGRADER_ROLE) {
-        require(newOracles != address(0), "Zero address");
-        oracles.push(newOracles);
-        _grantRole(ORACLE_ROLE, newOracles);
-        emit OracleAdded(newOracles);
+        _grantRole(UPGRADER_OR_SET_ORACLE_ROLE, upgrader); // TimeLock smart contract
     }
 
-    function removeOracle(address oracleAddress) external onlyRole(UPGRADER_ROLE) {
-        require(oracleAddress != address(0), "Zero address");
+    function setOracle(
+        address newOracle
+    ) external onlyRole(UPGRADER_OR_SET_ORACLE_ROLE) {
+        require(newOracle != address(0), ErrorZeroAddress());
+        if (oracles.length == 0) {
+            oracles.push(newOracle);
+            _grantRole(ORACLE_ROLE, newOracle);
+            emit OracleAdded(newOracle);
+        } else {
+            for (uint i = 0; i < oracles.length; i++) {
+                require(oracles[i] != newOracle, ErrorOracleAlreadyAdded());
+                oracles.push(newOracle);
+                _grantRole(ORACLE_ROLE, newOracle);
+                emit OracleAdded(newOracle);
+            }
+        }
+    }
+
+    function removeOracle(
+        address oracleAddress
+    ) external onlyRole(UPGRADER_OR_SET_ORACLE_ROLE) {
+        require(oracleAddress != address(0), ErrorZeroAddress());
         for (uint i = 0; i < oracles.length; i++) {
             if (oracles[i] == oracleAddress) {
                 oracles[i] = oracles[oracles.length - 1];
@@ -66,7 +87,7 @@ contract GoldToken is
     function setMintLimitByOracle(
         uint256 newLimit
     ) public onlyRole(ORACLE_ROLE) {
-        require(newLimit > 0, "Zero limit");
+        require(newLimit > 0, ErrorZeroLimit());
         pendingMintLimit.push(newLimit);
     }
 
@@ -75,12 +96,16 @@ contract GoldToken is
         uint minimumLimit;
         require(
             pendingMintLimit.length == oracles.length,
-            "Not enough oracles"
+            ErrorNotEnoughOracles()
         );
         for (uint i = 0; i < pendingMintLimit.length; i++) {
             //  find the minimum limit
-            if (minimumLimit > pendingMintLimit[i]) {
+            if (i == 0) {
                 minimumLimit = pendingMintLimit[i];
+            } else {
+                if (pendingMintLimit[i] < minimumLimit) {
+                    minimumLimit = pendingMintLimit[i];
+                }
             }
         }
         mintLimit += minimumLimit; // update mintLimit
@@ -89,16 +114,24 @@ contract GoldToken is
     }
 
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
-        require(amount + mintLimit <= mintLimit, "Amount exceeds mint limit");
-        mintLimit -= amount;
+        require(amount <= mintLimit, ErrorAmountExceedsMintLimit());
         _mint(to, amount);
+        mintLimit -= amount;
     }
 
     function decimals() public pure override returns (uint8) {
         return 6;
     }
 
+    function getOracles() view external returns (address[] memory) {
+        return oracles;
+    }
+
+    function getPendingMintLimit() view external returns (uint256[] memory) {
+        return pendingMintLimit;
+    }
+
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(UPGRADER_ROLE) {}
+    ) internal override onlyRole(UPGRADER_OR_SET_ORACLE_ROLE) {}
 }
