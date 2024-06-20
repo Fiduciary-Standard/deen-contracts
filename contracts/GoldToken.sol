@@ -123,4 +123,29 @@ contract GoldToken is
     function _authorizeUpgrade(
         address newImplementation
     ) internal override onlyRole(UPGRADER_OR_SET_ORACLE_ROLE) {}
+
+    function grantRole(bytes32 role, address account)
+        public
+        override
+        onlyRole(UPGRADER_OR_SET_ORACLE_ROLE)
+    {
+        super.grantRole(role, account);
+    }
+
+    function revokeRole(bytes32 role, address account)
+        public
+        override
+        onlyRole(UPGRADER_OR_SET_ORACLE_ROLE)
+    {
+        super.revokeRole(role, account);
+    }
+
+    function renounceRole(bytes32 role, address account)
+        public
+        override
+        onlyRole(UPGRADER_OR_SET_ORACLE_ROLE)
+    {
+        super.renounceRole(role, account);
+    }
+
 }
