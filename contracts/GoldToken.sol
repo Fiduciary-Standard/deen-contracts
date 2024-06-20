@@ -23,8 +23,8 @@ contract GoldToken is
     address[] public oracles; // List of oracle addresses
     mapping(address => uint256) public oracleMintLimit; // Amount of tokens set by each oracle
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant UPGRADER_OR_SET_ORACLE_ROLE =
-        keccak256("UPGRADER_OR_SET_ORACLE_ROLE");
+    bytes32 public constant TIME_LOCKER_ROLE =
+        keccak256("TIME_LOCKER_ROLE");
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
 
     event MintLimitUpdated(uint256 newLimit);
@@ -48,7 +48,7 @@ contract GoldToken is
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
-        _grantRole(UPGRADER_OR_SET_ORACLE_ROLE, upgrader); // TimeLock smart contract
+        _grantRole(TIME_LOCKER_ROLE, upgrader); // TimeLock smart contract
 
         for (uint i = 0; i < _oracles.length; i++) {
             oracles.push(_oracles[i]);
@@ -58,7 +58,7 @@ contract GoldToken is
 
     function setOracle(
         address newOracle
-    ) external onlyRole(UPGRADER_OR_SET_ORACLE_ROLE) {
+    ) external onlyRole(TIME_LOCKER_ROLE) {
         require(newOracle != address(0), ErrorZeroAddress());
         if (oracles.length == 0) {
             oracles.push(newOracle);
@@ -76,7 +76,7 @@ contract GoldToken is
 
     function removeOracle(
         address oracleAddress
-    ) external onlyRole(UPGRADER_OR_SET_ORACLE_ROLE) {
+    ) external onlyRole(TIME_LOCKER_ROLE) {
         require(oracleAddress != address(0), ErrorZeroAddress());
         for (uint i = 0; i < oracles.length; i++) {
             if (oracles[i] == oracleAddress) {
@@ -122,12 +122,12 @@ contract GoldToken is
 
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(UPGRADER_OR_SET_ORACLE_ROLE) {}
+    ) internal override onlyRole(TIME_LOCKER_ROLE) {}
 
     function grantRole(bytes32 role, address account)
         public
         override
-        onlyRole(UPGRADER_OR_SET_ORACLE_ROLE)
+        onlyRole(TIME_LOCKER_ROLE)
     {
         super.grantRole(role, account);
     }
@@ -135,7 +135,7 @@ contract GoldToken is
     function revokeRole(bytes32 role, address account)
         public
         override
-        onlyRole(UPGRADER_OR_SET_ORACLE_ROLE)
+        onlyRole(TIME_LOCKER_ROLE)
     {
         super.revokeRole(role, account);
     }
@@ -143,7 +143,7 @@ contract GoldToken is
     function renounceRole(bytes32 role, address account)
         public
         override
-        onlyRole(UPGRADER_OR_SET_ORACLE_ROLE)
+        onlyRole(TIME_LOCKER_ROLE)
     {
         super.renounceRole(role, account);
     }
