@@ -12,7 +12,7 @@ describe("TimeLock", function () {
     const [owner, minter, upgrader, oracle, newInstance] = await ethers.getSigners();
 
     const GoldToken = await ethers.getContractFactory("GoldToken");
-    const proxy = await upgrades.deployProxy(GoldToken, [owner.address, minter.address, upgrader.address], { kind: 'uups' });
+    const proxy = await upgrades.deployProxy(GoldToken, [owner.address, minter.address, upgrader.address, []], { kind: 'uups' });
     await proxy.waitForDeployment();
     const goldToken = await ethers.getContractAt("GoldToken", proxy);
 
