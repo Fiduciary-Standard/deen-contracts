@@ -20,9 +20,8 @@ contract GoldToken is
     AccessControlUpgradeable,
     UUPSUpgradeable
 {
-    uint256 public mintLimit; // Maximum amount of tokens that can be minted
-    uint256[] public pendingMintLimit; // Amount of tokens that can be added to mintLimit after oracles approve
     address[] public oracles; // List of oracle addresses
+    mapping(address => uint256) public oracleMintLimit; // Amount of tokens set by each oracle
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant UPGRADER_OR_SET_ORACLE_ROLE =
         keccak256("UPGRADER_OR_SET_ORACLE_ROLE");
@@ -40,7 +39,8 @@ contract GoldToken is
     function initialize(
         address defaultAdmin, // Owner grant roles
         address minter, // Admin
-        address upgrader // timeLock contract
+        address upgrader, // timeLock contract
+        address[] memory _oracles
     ) public initializer {
         __ERC20_init("GoldToken", "GTK");
         __AccessControl_init();
@@ -49,6 +49,11 @@ contract GoldToken is
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
         _grantRole(UPGRADER_OR_SET_ORACLE_ROLE, upgrader); // TimeLock smart contract
+
+        for (uint i = 0; i < _oracles.length; i++) {
+            oracles.push(_oracles[i]);
+            _grantRole(ORACLE_ROLE, _oracles[i]);
+        }
     }
 
     function setOracle(
@@ -88,35 +93,27 @@ contract GoldToken is
         uint256 newLimit
     ) public onlyRole(ORACLE_ROLE) {
         require(newLimit > 0, ErrorZeroLimit());
-        pendingMintLimit.push(newLimit);
-    }
-
-    //  after all oracles approve, update mintLimit
-    function updateMintLimit() public onlyRole(MINTER_ROLE) {
-        uint minimumLimit;
-        require(
-            pendingMintLimit.length == oracles.length,
-            ErrorNotEnoughOracles()
-        );
-        for (uint i = 0; i < pendingMintLimit.length; i++) {
-            //  find the minimum limit
-            if (i == 0) {
-                minimumLimit = pendingMintLimit[i];
-            } else {
-                if (pendingMintLimit[i] < minimumLimit) {
-                    minimumLimit = pendingMintLimit[i];
-                }
-            }
-        }
-        mintLimit += minimumLimit; // update mintLimit
-        // clean pendingMintLimit
-        delete pendingMintLimit;
+        oracleMintLimit[msg.sender] = newLimit;
     }
 
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
-        require(amount <= mintLimit, ErrorAmountExceedsMintLimit());
+        require(
+            amount + totalSupply() <= getMintLimit(),
+            ErrorAmountExceedsMintLimit()
+        );
         _mint(to, amount);
-        mintLimit -= amount;
+    }
+
+    function getMintLimit() public view returns (uint256 mintLimit) {
+        for (uint256 i = 0; i < oracles.length; i++) {
+            if (i == 0) {
+                mintLimit = oracleMintLimit[oracles[i]];
+            } else {
+                if (oracleMintLimit[oracles[i]] < mintLimit) {
+                    mintLimit = oracleMintLimit[oracles[i]];
+                }
+            }
+        }
     }
 
     function decimals() public pure override returns (uint8) {
@@ -125,10 +122,6 @@ contract GoldToken is
 
     function getOracles() external view returns (address[] memory) {
         return oracles;
-    }
-
-    function getPendingMintLimit() external view returns (uint256[] memory) {
-        return pendingMintLimit;
     }
 
     function _authorizeUpgrade(

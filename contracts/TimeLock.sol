@@ -25,7 +25,7 @@ contract TimeLock is Ownable {
     );
 
     constructor(address initialOwner) Ownable(initialOwner) {
-        EXECUTION_DELAY = 1 days;
+        EXECUTION_DELAY = 3 days;
     }
 
     function queueTransaction(
