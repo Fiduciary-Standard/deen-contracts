@@ -7,19 +7,19 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+error ErrorZeroAddress();
+error ErrorZeroLimit();
+error ErrorNotEnoughOracles();
+error ErrorOracleAlreadyAdded();
+error ErrorOracleNotFound();
+error ErrorAmountExceedsMintLimit();
+
 contract GoldTokenV2 is
     Initializable,
     ERC20Upgradeable,
     AccessControlUpgradeable,
     UUPSUpgradeable
 {
-    error ErrorZeroAddress();
-    error ErrorZeroLimit();
-    error ErrorNotEnoughOracles();
-    error ErrorOracleAlreadyAdded();
-    error ErrorOracleNotFound();
-    error ErrorAmountExceedsMintLimit();
-    
     uint256 public mintLimit; // Maximum amount of tokens that can be minted
     uint256[] public pendingMintLimit; // Amount of tokens that can be added to mintLimit after oracles approve
     address[] public oracles; // List of oracle addresses
