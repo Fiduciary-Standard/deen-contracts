@@ -106,12 +106,8 @@ contract GoldToken is
 
     function getMintLimit() public view returns (uint256 mintLimit) {
         for (uint256 i = 0; i < oracles.length; i++) {
-            if (i == 0) {
+            if (oracleMintLimit[oracles[i]] < mintLimit || mintLimit == 0) {
                 mintLimit = oracleMintLimit[oracles[i]];
-            } else {
-                if (oracleMintLimit[oracles[i]] < mintLimit) {
-                    mintLimit = oracleMintLimit[oracles[i]];
-                }
             }
         }
     }
