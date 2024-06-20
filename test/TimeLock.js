@@ -11,13 +11,13 @@ describe("TimeLock", function () {
 
     const [owner, minter, upgrader, oracle, newInstance] = await ethers.getSigners();
 
+    const TimeLock = await ethers.getContractFactory("TimeLock");
+    const timeLock = await TimeLock.deploy();
+
     const GoldToken = await ethers.getContractFactory("GoldToken");
-    const proxy = await upgrades.deployProxy(GoldToken, [owner.address, minter.address, upgrader.address, []], { kind: 'uups' });
+    const proxy = await upgrades.deployProxy(GoldToken, [owner.address, minter.address, await timeLock.getAddress(), []], { kind: 'uups' });
     await proxy.waitForDeployment();
     const goldToken = await ethers.getContractAt("GoldToken", proxy);
-
-    const TimeLock = await ethers.getContractFactory("TimeLock");
-    const timeLock = await TimeLock.deploy(owner.address);
 
     return { goldToken, timeLock, owner, minter, upgrader, oracle, newInstance };
   }
@@ -32,16 +32,13 @@ describe("TimeLock", function () {
     it("Should add oracle", async function () {
       const { goldToken, timeLock, owner, oracle } = await loadFixture(deployTimeLockFixture);
 
-      // grant role to TimeLock
-      const role = await goldToken.UPGRADER_OR_SET_ORACLE_ROLE();
-
-      await goldToken.connect(owner).grantRole(role, await timeLock.getAddress());
-
       const callData = goldToken.interface.encodeFunctionData("setOracle", [oracle.address]);
       const queueTransactionTx = await timeLock.queueTransaction(await goldToken.getAddress(), 0, callData);
       await queueTransactionTx.wait();
 
-      await expect(timeLock.queueTransaction(await goldToken.getAddress(), 0, callData))
+      await expect(timeLock.connect(oracle).queueTransaction(await goldToken.getAddress(), 0, callData)).to.be.revertedWithCustomError(timeLock, "CallerIsNotAdmin()");
+
+      await expect(timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData))
         .to.emit(timeLock, "QueueTransaction");
 
       // // get logs
@@ -69,17 +66,12 @@ describe("TimeLock", function () {
     it("Should uppgrade contract", async function () {
       const { goldToken, timeLock, owner } = await loadFixture(deployTimeLockFixture);
 
-      // grant role to TimeLock
-      const role = await goldToken.UPGRADER_OR_SET_ORACLE_ROLE();
-
-      await goldToken.connect(owner).grantRole(role, await timeLock.getAddress());
-
       const GoldTokenV2 = await ethers.getContractFactory("GoldTokenV2");
       const newInstance = await upgrades.prepareUpgrade(await goldToken.getAddress(), GoldTokenV2);
 
       const callData = goldToken.interface.encodeFunctionData("upgradeToAndCall", [newInstance, "0x"]);
 
-      const queueTransactionTx = await timeLock.queueTransaction(await goldToken.getAddress(), 0, callData);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData);
 
       await queueTransactionTx.wait();
 

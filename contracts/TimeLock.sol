@@ -2,9 +2,14 @@
 // Compatible with OpenZeppelin Contracts ^5.0.0
 pragma solidity 0.8.26;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract TimeLock is Ownable {
+error CallerIsNotAdmin();
+error TransactionNotQueued();
+error TimeNotReached();
+error TransactionFailed();
+
+contract TimeLock {
     uint256 public EXECUTION_DELAY;
     mapping(bytes32 => bool) public executionQueue;
 
@@ -24,7 +29,16 @@ contract TimeLock is Ownable {
         uint256 executionDate
     );
 
-    constructor(address initialOwner) Ownable(initialOwner) {
+    modifier onlyAdmin(address contractAddress) {
+        AccessControl ac = AccessControl(contractAddress);
+        require(
+            ac.hasRole(ac.DEFAULT_ADMIN_ROLE(), msg.sender),
+            CallerIsNotAdmin()
+        );
+        _;
+    }
+
+    constructor() {
         EXECUTION_DELAY = 3 days;
     }
 
@@ -32,7 +46,7 @@ contract TimeLock is Ownable {
         address target,
         uint256 value,
         bytes memory data
-    ) external {
+    ) external onlyAdmin(target) {
         bytes32 txnHash = keccak256(
             abi.encode(target, value, data, block.timestamp + EXECUTION_DELAY)
         );
@@ -53,16 +67,12 @@ contract TimeLock is Ownable {
         uint256 executionDate
     ) external {
         bytes32 txnHash = keccak256(abi.encode(target, value, data, executionDate));
-        require(executionQueue[txnHash], "Transaction not queued");
-        require(block.timestamp >= executionDate, "Time not yet reached");
+        require(executionQueue[txnHash], TransactionNotQueued());
+        require(block.timestamp >= executionDate, TimeNotReached());
         executionQueue[txnHash] = false;
         (bool success, ) = target.call{value: value}(data);
-        require(success, "Transaction failed");
+        require(success, TransactionFailed());
         emit ExecuteTransaction(txnHash, target, value, data, executionDate);
     }
 
-    function updateDelay(uint256 newDelay) external onlyOwner {
-        require(newDelay > 0, "Delay must be greater than 0");
-        EXECUTION_DELAY = newDelay;
-    }
 }
