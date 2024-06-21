@@ -42,7 +42,7 @@ contract GoldToken is
         address upgrader, // timeLock contract
         address[] memory _oracles
     ) public initializer {
-        __ERC20_init("GoldToken", "GTK");
+        __ERC20_init("GoldToken", "GTK"); // TODO: Change token name and symbol
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
