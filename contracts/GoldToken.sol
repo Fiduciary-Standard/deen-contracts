@@ -129,7 +129,7 @@ contract GoldToken is
         override
         onlyRole(TIME_LOCKER_ROLE)
     {
-        super.grantRole(role, account);
+        _grantRole(role, account);
     }
 
     function revokeRole(bytes32 role, address account)
@@ -137,15 +137,7 @@ contract GoldToken is
         override
         onlyRole(TIME_LOCKER_ROLE)
     {
-        super.revokeRole(role, account);
-    }
-
-    function renounceRole(bytes32 role, address account)
-        public
-        override
-        onlyRole(TIME_LOCKER_ROLE)
-    {
-        super.renounceRole(role, account);
+        _revokeRole(role, account);
     }
 
 }

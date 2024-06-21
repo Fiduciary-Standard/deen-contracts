@@ -91,5 +91,67 @@ describe("TimeLock", function () {
 
       expect(await goldTokenV2.v2()).to.equal("v2");
     });
+
+    it("Should grant role", async function () {
+      const { goldToken, timeLock, owner, minter } = await loadFixture(deployTimeLockFixture);
+
+      const callData = goldToken.interface.encodeFunctionData("grantRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData);
+      await queueTransactionTx.wait();
+
+      let logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
+      expect(logs.length).to.equal(1);
+
+      const target = logs[0].args[1];
+      const value = logs[0].args[2];
+      const data = logs[0].args[3];
+      const executionDate = logs[0].args[4];
+
+      await time.increaseTo(executionDate);
+
+      await timeLock.executeTransaction(target, value, data, executionDate);
+
+      expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(true);
+    });
+
+    it("Should revoke role", async function () {
+      const { goldToken, timeLock, owner, minter } = await loadFixture(deployTimeLockFixture);
+
+      const callDataGrantRole = goldToken.interface.encodeFunctionData("grantRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
+      const queueTransactionTxGrantRole = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callDataGrantRole);
+      await queueTransactionTxGrantRole.wait();
+
+      let logsGrantRole = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
+      expect(logsGrantRole.length).to.equal(1);
+
+      const targetGrantRole = logsGrantRole[0].args[1];
+      const valueGrantRole = logsGrantRole[0].args[2];
+      const dataGrantRole = logsGrantRole[0].args[3];
+      const executionDateGrantRole = logsGrantRole[0].args[4];
+
+      await time.increaseTo(executionDateGrantRole);
+
+      await timeLock.executeTransaction(targetGrantRole, valueGrantRole, dataGrantRole, executionDateGrantRole);
+
+      expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(true);
+
+      const callData = goldToken.interface.encodeFunctionData("revokeRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData);
+      await queueTransactionTx.wait();
+
+      const logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
+      expect(logs.length).to.equal(2);
+
+      const target = logs[1].args[1];
+      const value = logs[1].args[2];
+      const data = logs[1].args[3];
+      const executionDate = logs[1].args[4];
+
+      await time.increaseTo(executionDate);
+
+      await timeLock.executeTransaction(target, value, data, executionDate);
+
+      expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(false);
+    });
   });
 });
