@@ -23,8 +23,7 @@ contract GoldToken is
     address[] public oracles; // List of oracle addresses
     mapping(address => uint256) public oracleMintLimit; // Amount of tokens set by each oracle
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant TIME_LOCKER_ROLE =
-        keccak256("TIME_LOCKER_ROLE");
+    bytes32 public constant TIME_LOCKER_ROLE = keccak256("TIME_LOCKER_ROLE");
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
 
     event MintLimitUpdated(uint256 newLimit);
@@ -42,13 +41,13 @@ contract GoldToken is
         address upgrader, // timeLock contract
         address[] memory _oracles
     ) public initializer {
-        __ERC20_init("GoldToken", "GTK"); // TODO: Change token name and symbol
+        __ERC20_init("Deenar", "DEEN");
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
-        _grantRole(TIME_LOCKER_ROLE, upgrader); // TimeLock smart contract
+        _grantRole(TIME_LOCKER_ROLE, upgrader);
 
         for (uint i = 0; i < _oracles.length; i++) {
             oracles.push(_oracles[i]);
@@ -56,9 +55,7 @@ contract GoldToken is
         }
     }
 
-    function setOracle(
-        address newOracle
-    ) external onlyRole(TIME_LOCKER_ROLE) {
+    function setOracle(address newOracle) external onlyRole(TIME_LOCKER_ROLE) {
         require(newOracle != address(0), ErrorZeroAddress());
         if (oracles.length == 0) {
             oracles.push(newOracle);
@@ -66,11 +63,13 @@ contract GoldToken is
             emit OracleAdded(newOracle);
         } else {
             for (uint i = 0; i < oracles.length; i++) {
-                require(oracles[i] != newOracle, ErrorOracleAlreadyAdded());
-                oracles.push(newOracle);
-                _grantRole(ORACLE_ROLE, newOracle);
-                emit OracleAdded(newOracle);
+                if (oracles[i] == newOracle) {
+                    revert("Oracle already added");
+                }
             }
+            oracles.push(newOracle);
+            _grantRole(ORACLE_ROLE, newOracle);
+            emit OracleAdded(newOracle);
         }
     }
 
@@ -104,12 +103,21 @@ contract GoldToken is
         _mint(to, amount);
     }
 
-    function getMintLimit() public view returns (uint256 mintLimit) {
-        for (uint256 i = 0; i < oracles.length; i++) {
-            if (oracleMintLimit[oracles[i]] < mintLimit || mintLimit == 0) {
-                mintLimit = oracleMintLimit[oracles[i]];
+    function getMintLimit() public view returns (uint256) {
+        if (oracles.length == 0) {
+            return 0;
+        }
+
+        uint256 mintLimit = type(uint256).max;
+
+        for (uint i = 0; i < oracles.length; i++) {
+            uint256 oracleLimit = oracleMintLimit[oracles[i]];
+            if (oracleLimit < mintLimit) {
+                mintLimit = oracleLimit;
             }
         }
+
+        return mintLimit;
     }
 
     function decimals() public pure override returns (uint8) {
@@ -124,20 +132,17 @@ contract GoldToken is
         address newImplementation
     ) internal override onlyRole(TIME_LOCKER_ROLE) {}
 
-    function grantRole(bytes32 role, address account)
-        public
-        override
-        onlyRole(TIME_LOCKER_ROLE)
-    {
+    function grantRole(
+        bytes32 role,
+        address account
+    ) public override onlyRole(TIME_LOCKER_ROLE) {
         _grantRole(role, account);
     }
 
-    function revokeRole(bytes32 role, address account)
-        public
-        override
-        onlyRole(TIME_LOCKER_ROLE)
-    {
+    function revokeRole(
+        bytes32 role,
+        address account
+    ) public override onlyRole(TIME_LOCKER_ROLE) {
         _revokeRole(role, account);
     }
-
 }
