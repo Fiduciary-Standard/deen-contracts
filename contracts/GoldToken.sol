@@ -82,6 +82,7 @@ contract GoldToken is
                 oracles[i] = oracles[oracles.length - 1];
                 oracles.pop();
                 _revokeRole(ORACLE_ROLE, oracleAddress);
+                oracleMintLimit[oracleAddress] = 0;
                 emit OracleRemoved(oracleAddress);
                 break;
             }
