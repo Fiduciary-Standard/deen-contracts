@@ -5,9 +5,9 @@ async function main() {
     const [deployer] = await ethers.getSigners();
     console.log('Deploying contracts with the account:', deployer.address);
     const GoldToken = await ethers.getContractFactory('GoldToken');
-    const defaultAdmin = deployer.address;
-    const minter = "";
-    const oracles = [];
+    const defaultAdmin = "0xb32D92ce87a0Ab4B5F69adF7af6629fD1f9cba32";
+    const minter = "0xb32D92ce87a0Ab4B5F69adF7af6629fD1f9cba32";
+    const oracles = ["0xb3f363A9375F340d3482AF63e397749B001d057E"];
 
     const TimeLock = await ethers.getContractFactory("TimeLock");
     const timeLock = await TimeLock.deploy();
