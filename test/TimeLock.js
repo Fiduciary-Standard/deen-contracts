@@ -26,7 +26,7 @@ describe("TimeLock", function () {
     it("Should set the right name", async function () {
       const { goldToken } = await loadFixture(deployTimeLockFixture);
 
-      expect(await goldToken.name()).to.equal("GoldToken");
+      expect(await goldToken.name()).to.equal("Deenar");
     });
 
     it("Should add oracle", async function () {

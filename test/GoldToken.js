@@ -23,7 +23,7 @@ describe("GoldToken", function () {
     it("Should set the right name", async function () {
       const { goldToken } = await loadFixture(deployGoldTokenFixture);
 
-      expect(await goldToken.name()).to.equal("GoldToken");
+      expect(await goldToken.name()).to.equal("Deenar");
     });
 
     it("Should set oracle address", async function () {
