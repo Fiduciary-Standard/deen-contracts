@@ -71,17 +71,16 @@ contract TimeLock is AccessControl {
 
     function executeTransaction(
         address target,
-        uint256 value,
         bytes memory data,
         uint256 executionDate
     ) external {
-        bytes32 txnHash = keccak256(abi.encode(target, value, data, executionDate));
+        bytes32 txnHash = keccak256(abi.encode(target, 0, data, executionDate));
         require(executionQueue[txnHash], TransactionNotQueued());
         require(block.timestamp >= executionDate, TimeNotReached());
         executionQueue[txnHash] = false;
-        (bool success, ) = target.call{value: value}(data);
+        (bool success, ) = target.call{value: 0}(data);
         require(success, TransactionFailed());
-        emit ExecuteTransaction(txnHash, target, value, data, executionDate);
+        emit ExecuteTransaction(txnHash, target, 0, data, executionDate);
     }
 
     function cancelTransaction(

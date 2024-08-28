@@ -44,13 +44,12 @@ describe("TimeLock", function () {
       expect(logs.length).to.equal(2);
 
       const target = logs[0].args[1];
-      const value = logs[0].args[2];
       const data = logs[0].args[3];
       const executionDate = logs[0].args[4];
 
       await time.increaseTo(executionDate);
 
-      await expect(timeLock.executeTransaction(target, value, data, executionDate)).to.emit(timeLock, "ExecuteTransaction");
+      await expect(timeLock.executeTransaction(target, data, executionDate)).to.emit(timeLock, "ExecuteTransaction");
 
       const oracles = await goldToken.getOracles();
 
@@ -77,13 +76,12 @@ describe("TimeLock", function () {
       expect(logs.length).to.equal(1);
 
       const target = logs[0].args[1];
-      const value = logs[0].args[2];
       const data = logs[0].args[3];
       const executionDate = logs[0].args[4];
 
       await time.increaseTo(executionDate);
 
-      await timeLock.executeTransaction(target, value, data, executionDate);
+      await timeLock.executeTransaction(target, data, executionDate);
     });
 
     it("Should grant role", async function () {
@@ -97,13 +95,12 @@ describe("TimeLock", function () {
       expect(logs.length).to.equal(1);
 
       const target = logs[0].args[1];
-      const value = logs[0].args[2];
       const data = logs[0].args[3];
       const executionDate = logs[0].args[4];
 
       await time.increaseTo(executionDate);
 
-      await timeLock.executeTransaction(target, value, data, executionDate);
+      await timeLock.executeTransaction(target, data, executionDate);
 
       expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(true);
     });
@@ -119,13 +116,12 @@ describe("TimeLock", function () {
       expect(logsGrantRole.length).to.equal(1);
 
       const targetGrantRole = logsGrantRole[0].args[1];
-      const valueGrantRole = logsGrantRole[0].args[2];
       const dataGrantRole = logsGrantRole[0].args[3];
       const executionDateGrantRole = logsGrantRole[0].args[4];
 
       await time.increaseTo(executionDateGrantRole);
 
-      await timeLock.executeTransaction(targetGrantRole, valueGrantRole, dataGrantRole, executionDateGrantRole);
+      await timeLock.executeTransaction(targetGrantRole, dataGrantRole, executionDateGrantRole);
 
       expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(true);
 
@@ -137,13 +133,12 @@ describe("TimeLock", function () {
       expect(logs.length).to.equal(2);
 
       const target = logs[1].args[1];
-      const value = logs[1].args[2];
       const data = logs[1].args[3];
       const executionDate = logs[1].args[4];
 
       await time.increaseTo(executionDate);
 
-      await timeLock.executeTransaction(target, value, data, executionDate);
+      await timeLock.executeTransaction(target, data, executionDate);
 
       expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(false);
     });

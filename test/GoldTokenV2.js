@@ -36,7 +36,7 @@ describe("GoldTokenV2", function () {
         await time.increaseTo(executionDate);
 
         // Execute the upgrade
-        await timeLock.executeTransaction(target, value, data, executionDate);
+        await timeLock.executeTransaction(target, data, executionDate);
 
         // Get the upgraded contract instance
         const goldTokenV2 = await ethers.getContractAt("GoldTokenContractV2", await goldTokenV1.getAddress());
