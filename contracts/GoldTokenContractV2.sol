@@ -67,7 +67,7 @@ contract GoldTokenContractV2 is
         address upgrader,
         address[] memory _oracles
     ) public initializer {
-        __ERC20_init("GoldToken", "GTK");
+        __ERC20_init("Deenar", "DEEN");
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
