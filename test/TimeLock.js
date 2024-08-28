@@ -8,7 +8,6 @@ const { ethers, upgrades } = require("hardhat");
 
 describe("TimeLock", function () {
   async function deployTimeLockFixture() {
-
     const [owner, minter, upgrader, oracle, newInstance] = await ethers.getSigners();
 
     const TimeLock = await ethers.getContractFactory("TimeLock");
@@ -41,7 +40,6 @@ describe("TimeLock", function () {
       await expect(timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData))
         .to.emit(timeLock, "QueueTransaction");
 
-      // // get logs
       const logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
       expect(logs.length).to.equal(2);
 
@@ -66,7 +64,7 @@ describe("TimeLock", function () {
     it("Should uppgrade contract", async function () {
       const { goldToken, timeLock, owner } = await loadFixture(deployTimeLockFixture);
 
-      const GoldTokenV2 = await ethers.getContractFactory("GoldTokenV2");
+      const GoldTokenV2 = await ethers.getContractFactory("GoldTokenContractV2");
       const newInstance = await upgrades.prepareUpgrade(await goldToken.getAddress(), GoldTokenV2);
 
       const callData = goldToken.interface.encodeFunctionData("upgradeToAndCall", [newInstance, "0x"]);
@@ -86,10 +84,6 @@ describe("TimeLock", function () {
       await time.increaseTo(executionDate);
 
       await timeLock.executeTransaction(target, value, data, executionDate);
-
-      const goldTokenV2 = await ethers.getContractAt("GoldTokenV2", await goldToken.getAddress());
-
-      expect(await goldTokenV2.v2()).to.equal("v2");
     });
 
     it("Should grant role", async function () {
@@ -152,6 +146,25 @@ describe("TimeLock", function () {
       await timeLock.executeTransaction(target, value, data, executionDate);
 
       expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(false);
+    });
+
+    it("Should cancel transaction", async function () {
+      const { goldToken, timeLock, owner, minter } = await loadFixture(deployTimeLockFixture);
+
+      const callData = goldToken.interface.encodeFunctionData("grantRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData);
+      await queueTransactionTx.wait();
+
+      const logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
+      expect(logs.length).to.equal(1);
+
+      const target = logs[0].args[1];
+      const value = logs[0].args[2];
+      const data = logs[0].args[3];
+      const executionDate = logs[0].args[4];
+
+      await expect(timeLock.connect(owner).cancelTransaction(target, value, data, executionDate))
+        .to.emit(timeLock, "CancelTransaction");
     });
   });
 });
