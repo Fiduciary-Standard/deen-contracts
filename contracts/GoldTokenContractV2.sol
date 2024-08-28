@@ -73,19 +73,19 @@ contract GoldTokenContractV2 is
 
         require(
             defaultAdmin != address(0),
-            "Default admin cannot be zero address"
+            ErrorZeroAddress()
         );
-        require(minter != address(0), "Minter cannot be zero address");
-        require(upgrader != address(0), "Upgrader cannot be zero address");
+        require(minter != address(0), ErrorZeroAddress());
+        require(upgrader != address(0), ErrorZeroAddress());
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, minter);
         _grantRole(TIME_LOCKER_ROLE, upgrader);
 
         for (uint i = 0; i < _oracles.length; i++) {
-            require(_oracles[i] != address(0), "Oracle address cannot be zero");
+            require(_oracles[i] != address(0), ErrorZeroAddress());
             for (uint j = 0; j < i; j++) {
-                require(_oracles[i] != _oracles[j], "Duplicate oracle address");
+                require(_oracles[i] != _oracles[j], ErrorOracleAlreadyAdded());
             }
             oracles.push(_oracles[i]);
             _grantRole(ORACLE_ROLE, _oracles[i]);
