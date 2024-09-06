@@ -26,11 +26,11 @@ describe("GoldTokenV2", function () {
 
         // Queue the upgrade transaction
         const callData = goldTokenV1.interface.encodeFunctionData("upgradeToAndCall", [newImplementation, "0x"]);
-        await timeLock.connect(owner).queueTransaction(await goldTokenV1.getAddress(), 0, callData);
+        await timeLock.connect(owner).queueTransaction(await goldTokenV1.getAddress(), callData);
 
         // Get the queued transaction details
         const logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
-        const [target, value, data, executionDate] = logs[0].args.slice(1);
+        const [txnHash, target, data, executionDate] = logs[0].args;
 
         // Increase time to execution date
         await time.increaseTo(executionDate);

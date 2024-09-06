@@ -32,13 +32,11 @@ contract TimeLock is AccessControl {
     /// @notice Emitted when a transaction is queued
     /// @param txnHash The hash of the transaction details
     /// @param target The address of the contract to be called
-    /// @param value The amount of Ether to be sent with the transaction
     /// @param data The calldata of the transaction
     /// @param executionDate The timestamp after which the transaction can be executed
     event QueueTransaction(
         bytes32 indexed txnHash,
         address indexed target,
-        uint256 value,
         bytes data,
         uint256 executionDate
     );
@@ -46,13 +44,11 @@ contract TimeLock is AccessControl {
     /// @notice Emitted when a transaction is executed
     /// @param txnHash The hash of the transaction details
     /// @param target The address of the contract called
-    /// @param value The amount of Ether sent with the transaction
     /// @param data The calldata of the transaction
     /// @param executionDate The timestamp after which the transaction was executed
     event ExecuteTransaction(
         bytes32 indexed txnHash,
         address indexed target,
-        uint256 value,
         bytes data,
         uint256 executionDate
     );
@@ -81,21 +77,18 @@ contract TimeLock is AccessControl {
 
     /// @notice Queues a transaction for later execution
     /// @param target The address of the contract to be called
-    /// @param value The amount of Ether to be sent with the transaction
     /// @param data The calldata of the transaction
     function queueTransaction(
         address target,
-        uint256 value,
         bytes memory data
     ) external onlyAdmin(target) {
         bytes32 txnHash = keccak256(
-            abi.encode(target, value, data, block.timestamp + EXECUTION_DELAY)
+            abi.encode(target, data, block.timestamp + EXECUTION_DELAY)
         );
         executionQueue[txnHash] = true;
         emit QueueTransaction(
             txnHash,
             target,
-            value,
             data,
             block.timestamp + EXECUTION_DELAY
         );
@@ -110,28 +103,26 @@ contract TimeLock is AccessControl {
         bytes memory data,
         uint256 executionDate
     ) external {
-        bytes32 txnHash = keccak256(abi.encode(target, 0, data, executionDate));
+        bytes32 txnHash = keccak256(abi.encode(target, data, executionDate));
         require(executionQueue[txnHash], TransactionNotQueued());
         require(block.timestamp >= executionDate, TimeNotReached());
         executionQueue[txnHash] = false;
         (bool success, ) = target.call{value: 0}(data);
         require(success, TransactionFailed());
-        emit ExecuteTransaction(txnHash, target, 0, data, executionDate);
+        emit ExecuteTransaction(txnHash, target, data, executionDate);
     }
 
     /// @notice Cancels a previously queued transaction
     /// @param target The address of the contract to be called
-    /// @param value The amount of Ether to be sent with the transaction
     /// @param data The calldata of the transaction
     /// @param executionDate The timestamp after which the transaction can be executed
     function cancelTransaction(
         address target,
-        uint256 value,
         bytes memory data,
         uint256 executionDate
     ) external onlyRole(CANCELLER_ROLE) {
         bytes32 txnHash = keccak256(
-            abi.encode(target, value, data, executionDate)
+            abi.encode(target, data, executionDate)
         );
         require(executionQueue[txnHash], TransactionNotQueued());
         executionQueue[txnHash] = false;

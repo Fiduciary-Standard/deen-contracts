@@ -32,7 +32,7 @@ contract GoldTokenContractV2 is
     address[] public oracles;
     /// @notice Mapping of oracle addresses to their set mint limits
     mapping(address => uint256) public oracleMintLimit;
-    
+
     /// @notice Role identifier for minters
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     /// @notice Role identifier for time lockers (upgrade controllers)
@@ -51,52 +51,15 @@ contract GoldTokenContractV2 is
     /// @param removedOracle The address of the removed oracle
     event OracleRemoved(address removedOracle);
 
+    /// @notice Disables initialization of the implementation contract
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    /// @notice Initializes the contract
-    /// @param defaultAdmin Address of the default admin
-    /// @param minter Address of the initial minter
-    /// @param upgrader Address of the upgrader (usually a TimeLock contract)
-    /// @param _oracles Array of initial oracle addresses
-    function initialize(
-        address defaultAdmin,
-        address minter,
-        address upgrader,
-        address[] memory _oracles
-    ) public initializer {
-        __ERC20_init("Deenar", "DEEN");
-        __AccessControl_init();
-        __UUPSUpgradeable_init();
-
-        require(
-            defaultAdmin != address(0),
-            ErrorZeroAddress()
-        );
-        require(minter != address(0), ErrorZeroAddress());
-        require(upgrader != address(0), ErrorZeroAddress());
-
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(MINTER_ROLE, minter);
-        _grantRole(TIME_LOCKER_ROLE, upgrader);
-
-        for (uint i = 0; i < _oracles.length; i++) {
-            require(_oracles[i] != address(0), ErrorZeroAddress());
-            for (uint j = 0; j < i; j++) {
-                require(_oracles[i] != _oracles[j], ErrorOracleAlreadyAdded());
-            }
-            oracles.push(_oracles[i]);
-            _grantRole(ORACLE_ROLE, _oracles[i]);
-        }
-    }
-
     /// @notice Adds a new oracle
     /// @param newOracle Address of the new oracle to add
-    function setOracle(
-        address newOracle
-    ) external onlyRole(TIME_LOCKER_ROLE) {
+    function setOracle(address newOracle) external onlyRole(TIME_LOCKER_ROLE) {
         require(newOracle != address(0), ErrorZeroAddress());
         if (oracles.length == 0) {
             oracles.push(newOracle);
@@ -105,10 +68,10 @@ contract GoldTokenContractV2 is
         } else {
             for (uint i = 0; i < oracles.length; i++) {
                 require(oracles[i] != newOracle, ErrorOracleAlreadyAdded());
-                oracles.push(newOracle);
-                _grantRole(ORACLE_ROLE, newOracle);
-                emit OracleAdded(newOracle);
             }
+            oracles.push(newOracle);
+            _grantRole(ORACLE_ROLE, newOracle);
+            emit OracleAdded(newOracle);
         }
     }
 
@@ -148,18 +111,27 @@ contract GoldTokenContractV2 is
     /// @param to Address to mint tokens to
     /// @param amount Amount of tokens to mint
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
-        require(totalSupply() + amount <= getMintLimit(), "Exceeds mint limit");
+        require(
+            totalSupply() + amount <= getMintLimit(),
+            ErrorAmountExceedsMintLimit()
+        );
         _mint(to, amount);
     }
 
     /// @notice Gets the current mint limit
     /// @return mintLimit The current mint limit (lowest limit set by any oracle)
-    function getMintLimit() public view returns (uint256 mintLimit) {
-        for (uint256 i = 0; i < oracles.length; i++) {
-            if (oracleMintLimit[oracles[i]] < mintLimit || mintLimit == 0) {
-                mintLimit = oracleMintLimit[oracles[i]];
+    function getMintLimit() public view returns (uint256) {
+        if (oracles.length == 0) {
+            return 0;
+        }
+        uint256 mintLimit = type(uint256).max;
+        for (uint i = 0; i < oracles.length; i++) {
+            uint256 oracleLimit = oracleMintLimit[oracles[i]];
+            if (oracleLimit < mintLimit) {
+                mintLimit = oracleLimit;
             }
         }
+        return mintLimit;
     }
 
     /// @notice Returns the number of decimals used to get its user representation
@@ -174,6 +146,26 @@ contract GoldTokenContractV2 is
         return oracles;
     }
 
+    /// @notice Grants a role to an account
+    /// @param role The role to grant
+    /// @param account The account to receive the new role
+    function grantRole(
+        bytes32 role,
+        address account
+    ) public override onlyRole(TIME_LOCKER_ROLE) {
+        _grantRole(role, account);
+    }
+
+    /// @notice Revokes a role from an account
+    /// @param role The role to revoke
+    /// @param account The account to revoke the role from
+    function revokeRole(
+        bytes32 role,
+        address account
+    ) public override onlyRole(TIME_LOCKER_ROLE) {
+        _revokeRole(role, account);
+    }
+
     /// @notice Function that should revert when `msg.sender` is not authorized to upgrade the contract
     /// @param newImplementation Address of the new implementation
     function _authorizeUpgrade(
@@ -183,7 +175,11 @@ contract GoldTokenContractV2 is
     /// @notice Burns tokens from the caller's balance
     /// @param amount The amount of tokens to burn
     function burn(uint256 amount) public {
-        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()) || hasRole(MINTER_ROLE, _msgSender()), "unauthorized");
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, _msgSender()) ||
+                hasRole(MINTER_ROLE, _msgSender()),
+            "unauthorized"
+        );
         _burn(_msgSender(), amount);
     }
 }
