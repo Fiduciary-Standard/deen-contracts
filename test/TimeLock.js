@@ -8,7 +8,6 @@ const { ethers, upgrades } = require("hardhat");
 
 describe("TimeLock", function () {
   async function deployTimeLockFixture() {
-
     const [owner, minter, upgrader, oracle, newInstance] = await ethers.getSigners();
 
     const TimeLock = await ethers.getContractFactory("TimeLock");
@@ -33,26 +32,24 @@ describe("TimeLock", function () {
       const { goldToken, timeLock, owner, oracle } = await loadFixture(deployTimeLockFixture);
 
       const callData = goldToken.interface.encodeFunctionData("setOracle", [oracle.address]);
-      const queueTransactionTx = await timeLock.queueTransaction(await goldToken.getAddress(), 0, callData);
+      const queueTransactionTx = await timeLock.queueTransaction(await goldToken.getAddress(), callData);
       await queueTransactionTx.wait();
 
-      await expect(timeLock.connect(oracle).queueTransaction(await goldToken.getAddress(), 0, callData)).to.be.revertedWithCustomError(timeLock, "CallerIsNotAdmin()");
+      await expect(timeLock.connect(oracle).queueTransaction(await goldToken.getAddress(), callData)).to.be.revertedWithCustomError(timeLock, "CallerIsNotAdmin()");
 
-      await expect(timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData))
+      await expect(timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), callData))
         .to.emit(timeLock, "QueueTransaction");
 
-      // // get logs
       const logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
       expect(logs.length).to.equal(2);
 
       const target = logs[0].args[1];
-      const value = logs[0].args[2];
-      const data = logs[0].args[3];
-      const executionDate = logs[0].args[4];
+      const data = logs[0].args[2];
+      const executionDate = logs[0].args[3];
 
       await time.increaseTo(executionDate);
 
-      await expect(timeLock.executeTransaction(target, value, data, executionDate)).to.emit(timeLock, "ExecuteTransaction");
+      await expect(timeLock.executeTransaction(target, data, executionDate)).to.emit(timeLock, "ExecuteTransaction");
 
       const oracles = await goldToken.getOracles();
 
@@ -63,15 +60,15 @@ describe("TimeLock", function () {
       }
     });
 
-    it("Should uppgrade contract", async function () {
+    it("Should upgrade contract", async function () {
       const { goldToken, timeLock, owner } = await loadFixture(deployTimeLockFixture);
 
-      const GoldTokenV2 = await ethers.getContractFactory("GoldTokenV2");
+      const GoldTokenV2 = await ethers.getContractFactory("GoldTokenContractV2");
       const newInstance = await upgrades.prepareUpgrade(await goldToken.getAddress(), GoldTokenV2);
 
       const callData = goldToken.interface.encodeFunctionData("upgradeToAndCall", [newInstance, "0x"]);
 
-      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), callData);
 
       await queueTransactionTx.wait();
 
@@ -79,37 +76,31 @@ describe("TimeLock", function () {
       expect(logs.length).to.equal(1);
 
       const target = logs[0].args[1];
-      const value = logs[0].args[2];
-      const data = logs[0].args[3];
-      const executionDate = logs[0].args[4];
+      const data = logs[0].args[2];
+      const executionDate = logs[0].args[3];
 
       await time.increaseTo(executionDate);
 
-      await timeLock.executeTransaction(target, value, data, executionDate);
-
-      const goldTokenV2 = await ethers.getContractAt("GoldTokenV2", await goldToken.getAddress());
-
-      expect(await goldTokenV2.v2()).to.equal("v2");
+      await timeLock.executeTransaction(target, data, executionDate);
     });
 
     it("Should grant role", async function () {
       const { goldToken, timeLock, owner, minter } = await loadFixture(deployTimeLockFixture);
 
       const callData = goldToken.interface.encodeFunctionData("grantRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
-      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), callData);
       await queueTransactionTx.wait();
 
       let logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
       expect(logs.length).to.equal(1);
 
       const target = logs[0].args[1];
-      const value = logs[0].args[2];
-      const data = logs[0].args[3];
-      const executionDate = logs[0].args[4];
+      const data = logs[0].args[2];
+      const executionDate = logs[0].args[3];
 
       await time.increaseTo(executionDate);
 
-      await timeLock.executeTransaction(target, value, data, executionDate);
+      await timeLock.executeTransaction(target, data, executionDate);
 
       expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(true);
     });
@@ -118,40 +109,56 @@ describe("TimeLock", function () {
       const { goldToken, timeLock, owner, minter } = await loadFixture(deployTimeLockFixture);
 
       const callDataGrantRole = goldToken.interface.encodeFunctionData("grantRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
-      const queueTransactionTxGrantRole = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callDataGrantRole);
+      const queueTransactionTxGrantRole = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), callDataGrantRole);
       await queueTransactionTxGrantRole.wait();
 
       let logsGrantRole = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
       expect(logsGrantRole.length).to.equal(1);
 
       const targetGrantRole = logsGrantRole[0].args[1];
-      const valueGrantRole = logsGrantRole[0].args[2];
-      const dataGrantRole = logsGrantRole[0].args[3];
-      const executionDateGrantRole = logsGrantRole[0].args[4];
+      const dataGrantRole = logsGrantRole[0].args[2];
+      const executionDateGrantRole = logsGrantRole[0].args[3];
 
       await time.increaseTo(executionDateGrantRole);
 
-      await timeLock.executeTransaction(targetGrantRole, valueGrantRole, dataGrantRole, executionDateGrantRole);
+      await timeLock.executeTransaction(targetGrantRole, dataGrantRole, executionDateGrantRole);
 
       expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(true);
 
       const callData = goldToken.interface.encodeFunctionData("revokeRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
-      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), 0, callData);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), callData);
       await queueTransactionTx.wait();
 
       const logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
       expect(logs.length).to.equal(2);
 
       const target = logs[1].args[1];
-      const value = logs[1].args[2];
-      const data = logs[1].args[3];
-      const executionDate = logs[1].args[4];
+      const data = logs[1].args[2];
+      const executionDate = logs[1].args[3];
 
       await time.increaseTo(executionDate);
 
-      await timeLock.executeTransaction(target, value, data, executionDate);
+      await timeLock.executeTransaction(target, data, executionDate);
 
       expect(await goldToken.hasRole(await goldToken.MINTER_ROLE(), minter.address)).to.equal(false);
+    });
+
+    it("Should cancel transaction", async function () {
+      const { goldToken, timeLock, owner, minter } = await loadFixture(deployTimeLockFixture);
+
+      const callData = goldToken.interface.encodeFunctionData("grantRole", [await goldToken.MINTER_ROLE(), await minter.getAddress()]);
+      const queueTransactionTx = await timeLock.connect(owner).queueTransaction(await goldToken.getAddress(), callData);
+      await queueTransactionTx.wait();
+
+      const logs = await timeLock.queryFilter(timeLock.filters.QueueTransaction());
+      expect(logs.length).to.equal(1);
+
+      const target = logs[0].args[1];
+      const data = logs[0].args[2];
+      const executionDate = logs[0].args[3];
+
+      await expect(timeLock.connect(owner).cancelTransaction(target, data, executionDate))
+        .to.emit(timeLock, "CancelTransaction");
     });
   });
 });
