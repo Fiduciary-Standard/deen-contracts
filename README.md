@@ -36,3 +36,9 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat run ./scripts/deploy.js --network ....
 ```
+
+## Deployments
+
+### Mainnet
+TimeLock: [0x10654138642E2B7F5493CF4eE171D07E4D81D132](https://explorer.haqq.network/address/0xAf98E500f5c1A5b4950D68548ec85A34c17fFf22#code)
+GoldTokenContract: [0x4FEBDDe47Ab9a76200e57eFcC80b212a07b3e6cE](https://explorer.haqq.network/address/0x4FEBDDe47Ab9a76200e57eFcC80b212a07b3e6cE#code)
